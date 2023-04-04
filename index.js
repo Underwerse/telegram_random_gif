@@ -25,7 +25,7 @@ const menu = {
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(chatId, "Привет! Я бот, который отправляет случайный gif из папки 'gifs'. Нажми кнопку 'Получить гиф', чтобы начать.", menu);
+  bot.sendMessage(chatId, "Привет! Я бот, который ищет в памяти вашего смартфона и отправляет случайный gif'. Нажми кнопку 'Получить гиф', чтобы начать.", menu);
 });
 
 bot.on('message', (msg) => {
