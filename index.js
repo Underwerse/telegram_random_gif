@@ -11,13 +11,18 @@ const bot = new TelegramBot(token, { polling: true });
 
 const sentGifs = {};
 
+// Добавляем флаг disable_web_page_preview: true, чтобы кнопка была кликабельна
 const menu = {
   reply_markup: {
-    keyboard: [[{ text: 'Получить гиф' }]],
+    keyboard: [[{ text: 'Get GIF' }]],
     resize_keyboard: true,
     one_time_keyboard: false,
+    disable_web_page_preview: true,
   },
 };
+
+// Создаем переменную isButtonDisabled
+let isButtonDisabled = false;
 
 // Создаем папку logs, если она не существует
 const logsDir = path.join(__dirname, 'logs');
@@ -29,14 +34,23 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
   bot.sendMessage(
     chatId,
-    "Привет! Я бот, который ищет в памяти вашего смартфона и отправляет случайный gif'. Нажми кнопку 'Получить гиф', чтобы начать.",
+    "Hi! I'm a bot that searches your smartphone's memory and sends a random gif.' Click the 'Get Gif' button to get started.",
     menu
   );
 });
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
-  if ((msg.text === 'Получить гиф', menu)) {
+
+  // Добавляем проверку на значение флага isButtonDisabled
+  if (msg.text === 'Get GIF' && !isButtonDisabled) {
+
+    // Задаем значение флага isButtonDisabled в true на 5 секунд
+    isButtonDisabled = true;
+    setTimeout(() => {
+      isButtonDisabled = false;
+    }, 5000);
+
     if (!sentGifs[chatId]) {
       sentGifs[chatId] = [];
     }
@@ -51,7 +65,7 @@ bot.on('message', (msg) => {
       sentGifs[chatId] = [];
       return bot.sendMessage(
         chatId,
-        'Все gif уже были отправлены, начинаю сначала',
+        'You got all GIFs, now begin from start',
         menu
       );
     }
@@ -72,5 +86,8 @@ bot.on('message', (msg) => {
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
+  } else if (msg.text === 'Get GIF' && isButtonDisabled) {
+    // Если кнопка заблокирована, сообщаем пользователю об этом
+    bot.sendMessage(chatId, `Please be patient and wait 5 sec before next request`, menu);
   }
 });
