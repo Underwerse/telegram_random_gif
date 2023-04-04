@@ -59,7 +59,9 @@ bot.on('message', (msg) => {
     const randomGif =
       filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
 
-    bot.sendDocument(chatId, path.join(__dirname, 'gifs', randomGif));
+    bot.sendDocument(chatId, path.join(__dirname, 'gifs', randomGif), {
+      contentType: 'image/gif',
+    });
 
     sentGifs[chatId].push(gifs.indexOf(randomGif));
 
