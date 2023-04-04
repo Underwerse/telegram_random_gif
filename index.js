@@ -64,8 +64,9 @@ bot.on('message', (msg) => {
     sentGifs[chatId].push(gifs.indexOf(randomGif));
 
     // Записываем активность пользователя в файл activity.log
-    const username = msg.from.username || 'Unknown user';
-    const logMsg = `User ${username} requested a gif at ${new Date().toISOString()}\n`;
+    const username = msg.from.username || 'Unknown username';
+    const first_name = msg.from.first_name || 'Unknown first_name';
+    const logMsg = `User ${username}/${first_name} requested a gif at ${new Date().toISOString()}\n`;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
