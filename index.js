@@ -1,4 +1,5 @@
 import TelegramBot from 'node-telegram-bot-api';
+import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
@@ -6,7 +7,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const __dirname = path.resolve();
 const token = process.env.TELEGRAM_TOKEN;
-
+const adviceUrl = 'http://fucking-great-advice.ru/api/random';
 const bot = new TelegramBot(token, { polling: true });
 
 const sentGifs = {};
@@ -14,7 +15,7 @@ const sentGifs = {};
 // Добавляем флаг disable_web_page_preview: true, чтобы кнопка была кликабельна
 const menu = {
   reply_markup: {
-    keyboard: [[{ text: 'Get GIF' }]],
+    keyboard: [[{ text: 'Get GIF' }, { text: 'Get advice' }]],
     resize_keyboard: true,
     one_time_keyboard: false,
     disable_web_page_preview: true,
@@ -39,12 +40,11 @@ bot.onText(/\/start/, (msg) => {
   );
 });
 
-bot.on('message', (msg) => {
+bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
   // Добавляем проверку на значение флага isButtonDisabled
   if (msg.text === 'Get GIF' && !isButtonDisabled) {
-
     // Задаем значение флага isButtonDisabled в true на 5 секунд
     isButtonDisabled = true;
     setTimeout(() => {
@@ -88,6 +88,21 @@ bot.on('message', (msg) => {
     });
   } else if (msg.text === 'Get GIF' && isButtonDisabled) {
     // Если кнопка заблокирована, сообщаем пользователю об этом
-    bot.sendMessage(chatId, `Please be patient and wait 5 sec before next request`, menu);
+    bot.sendMessage(
+      chatId,
+      `Please be patient and wait 5 sec before next request`,
+      menu
+    );
+  } else if (msg.text === 'Get advice') {
+    await axios
+      .get(adviceUrl)
+      .then((response) => {
+        const advice = response.data.text;
+        bot.sendMessage(chatId, advice);
+      })
+      .catch((error) => {
+        console.error(error);
+        bot.sendMessage(chatId, 'Advices are not available right now');
+      });
   }
 });
