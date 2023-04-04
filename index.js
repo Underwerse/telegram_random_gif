@@ -30,7 +30,7 @@ bot.onText(/\/start/, (msg) => {
 
 bot.on('message', (msg) => {
   const chatId = msg.chat.id;
-  if (msg.text === 'Получить гиф') {
+  if (msg.text === 'Получить гиф', menu) {
     if (!sentGifs[chatId]) {
       sentGifs[chatId] = [];
     }
@@ -41,7 +41,7 @@ bot.on('message', (msg) => {
 
     if (filteredGifs.length === 0) {
       sentGifs[chatId] = [];
-      return bot.sendMessage(chatId, 'Все gif уже были отправлены, начинаю сначала');
+      return bot.sendMessage(chatId, 'Все gif уже были отправлены, начинаю сначала', menu);
     }
 
     const randomGif = filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
