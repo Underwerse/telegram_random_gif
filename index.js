@@ -70,10 +70,13 @@ bot.on('message', async (msg) => {
       );
     }
 
+    const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
     for (let i = 0; i < 5; i++) {
       const randomGif =
         filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
 
+      await delay(2000); // задержка в 2 секунды
       await bot.sendDocument(chatId, path.join(__dirname, 'gifs', randomGif), {
         contentType: 'image/gif',
       });
