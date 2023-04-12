@@ -70,7 +70,7 @@ bot.on('message', async (msg) => {
       );
     }
 
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < 5; i++) {
       const randomGif =
         filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
 
