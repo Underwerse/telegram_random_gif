@@ -70,14 +70,16 @@ bot.on('message', async (msg) => {
       );
     }
 
-    const randomGif =
-      filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
+    for (let i = 0; i < 4; i++) {
+      const randomGif =
+        filteredGifs[Math.floor(Math.random() * filteredGifs.length)];
 
-    bot.sendDocument(chatId, path.join(__dirname, 'gifs', randomGif), {
-      contentType: 'image/gif',
-    });
+      await bot.sendDocument(chatId, path.join(__dirname, 'gifs', randomGif), {
+        contentType: 'image/gif',
+      });
 
-    sentGifs[chatId].push(gifs.indexOf(randomGif));
+      sentGifs[chatId].push(gifs.indexOf(randomGif));
+    }
 
     // Записываем активность пользователя в файл activity.log
     const username = msg.from.username || 'Unknown username';
