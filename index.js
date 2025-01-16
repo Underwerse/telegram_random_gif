@@ -110,8 +110,8 @@ bot.on('message', async (msg) => {
 
     const randomVideo =
       filteredVideos[Math.floor(Math.random() * filteredVideos.length)];
-    await bot.sendDocument(chatId, path.join(__dirname, 'videos', randomVideo), {
-      contentType: 'video/mp4',
+    await bot.sendVideo(chatId, path.join(__dirname, 'videos', randomVideo), {
+      caption: '',
     });
 
     sentVideos[chatId].push(videos.indexOf(randomVideo));
