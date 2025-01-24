@@ -21,7 +21,7 @@ const menu = {
   reply_markup: {
     keyboard: [
       [{ text: 'get gif' }, { text: 'get advice' }],
-      [{ text: 'get video' }, { text: 'Get Logs' }],
+      [{ text: 'get video' }, { text: 'get logs' }],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -63,7 +63,7 @@ bot.on('message', async (msg) => {
   }
 
   // Проверка авторизации для логов
-  if (msg.text === 'Get Logs' && !logAuthorizedUsers[chatId]) {
+  if (msg.text === 'get logs' && !logAuthorizedUsers[chatId]) {
     bot.sendMessage(chatId, 'Для доступа к логам нужен специальный пароль:');
     return;
   }
@@ -74,7 +74,7 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (msg.text === 'Get Logs') {
+  if (msg.text === 'get logs') {
     if (!fs.existsSync(logPath)) {
       return bot.sendMessage(chatId, 'Логов пока нет', menu);
     }
