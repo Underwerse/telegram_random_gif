@@ -12,6 +12,10 @@ const bot = new TelegramBot(token, { polling: true });
 
 const sentGifs = {};
 const sentVideos = {}; // Храним информацию об отправленных видео
+const authorizedUsers = {}; // Список авторизованных пользователей
+const logAuthorizedUsers = {}; // Список пользователей, авторизованных для логов
+const PASSWORD = process.env.BOT_PASSWORD || 'сиськи'; // Пароль для авторизации
+const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль для авторизации логов
 
 const menu = {
   reply_markup: {
@@ -34,16 +38,55 @@ if (!fs.existsSync(logsDir)) {
 
 bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
-  bot.sendMessage(
-    chatId,
-    "Hi! I'm a bot that can send random GIFs, videos, and great advice!",
-    menu
-  );
+
+  if (authorizedUsers[chatId]) {
+    bot.sendMessage(chatId, "Хэлоу странник! Захотелось клубнички?", menu);
+  } else {
+    bot.sendMessage(chatId, 'Тут у меня пароль требуется, ну ты знаешь:');
+  }
 });
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
+  // Проверка авторизации для основного функционала
+  if (!authorizedUsers[chatId]) {
+    if (msg.text === PASSWORD) {
+      authorizedUsers[chatId] = true;
+      bot.sendMessage(chatId, 'Отлично, теперь погнали!', menu);
+    } else {
+      bot.sendMessage(chatId, 'Ну что, родимый, обознался?');
+    }
+    return;
+  }
+
+  // Проверка авторизации для логов
+  if (msg.text === 'Get Logs' && !logAuthorizedUsers[chatId]) {
+    bot.sendMessage(chatId, 'Для доступа к логам нужен специальный пароль:');
+    return;
+  }
+
+  if (!logAuthorizedUsers[chatId] && msg.text === LOG_PASSWORD) {
+    logAuthorizedUsers[chatId] = true;
+    bot.sendMessage(chatId, 'Теперь у тебя есть доступ к логам! Выбирай в меню.', menu);
+    return;
+  }
+
+  if (msg.text === 'Get Logs') {
+    const logPath = path.join(logsDir, 'activity.log');
+
+    if (!fs.existsSync(logPath)) {
+      return bot.sendMessage(chatId, 'Логов пока нет', menu);
+    }
+
+    const logs = fs.readFileSync(logPath, 'utf-8').split('\n').filter(Boolean);
+    const lastLogs = logs.slice(-10).join('\n') || 'Чот пока нет ничего.';
+
+    bot.sendMessage(chatId, `Последние 10 действий:\n\n${lastLogs}`, menu);
+    return;
+  }
+
+  // Основной функционал бота
   if (msg.text === 'Get GIF' && !isButtonDisabled) {
     isButtonDisabled = true;
     setTimeout(() => {
@@ -63,7 +106,7 @@ bot.on('message', async (msg) => {
       sentGifs[chatId] = [];
       return bot.sendMessage(
         chatId,
-        'You got all GIFs, now begin from start',
+        'Ты все гифки уже пересмотрел, давай по-новой',
         menu
       );
     }
@@ -103,7 +146,7 @@ bot.on('message', async (msg) => {
       sentVideos[chatId] = [];
       return bot.sendMessage(
         chatId,
-        'You got all videos, now begin from start',
+        'Ты все видосы уже пересмотрел, давай по-новой',
         menu
       );
     }
@@ -118,22 +161,11 @@ bot.on('message', async (msg) => {
 
     const username = msg.from.username || 'Unknown username';
     const first_name = msg.from.first_name || 'Unknown first_name';
-    const logMsg = `User ${username}/${first_name} requested a video at ${new Date().toISOString()}
+    const logMsg = `User ${username}/${first_name} requested a video at ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
 `;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
-  } else if (msg.text === 'Get Logs') {
-    const logPath = path.join(logsDir, 'activity.log');
-
-    if (!fs.existsSync(logPath)) {
-      return bot.sendMessage(chatId, 'No logs available yet.', menu);
-    }
-
-    const logs = fs.readFileSync(logPath, 'utf-8').split('\n').filter(Boolean);
-    const lastLogs = logs.slice(-10).join('\n') || 'No recent activity.';
-
-    bot.sendMessage(chatId, `Last 10 log entries:\n\n${lastLogs}`, menu);
   } else if (msg.text === 'Get advice') {
     await axios
       .get(adviceUrl)
@@ -148,7 +180,7 @@ bot.on('message', async (msg) => {
   } else if (msg.text === 'Get GIF' && isButtonDisabled) {
     bot.sendMessage(
       chatId,
-      `Please be patient and wait 5 sec before next request`,
+      `Надо 5 секунд подождать перез новым запросом-то`,
       menu
     );
   }
