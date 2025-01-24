@@ -20,8 +20,8 @@ const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль
 const menu = {
   reply_markup: {
     keyboard: [
-      [{ text: 'Get GIF' }, { text: 'Get advice' }],
-      [{ text: 'Get Video' }, { text: 'Get Logs' }],
+      [{ text: 'get gif' }, { text: 'get advice' }],
+      [{ text: 'get video' }, { text: 'Get Logs' }],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -32,6 +32,8 @@ const menu = {
 let isButtonDisabled = false;
 
 const logsDir = path.join(__dirname, 'logs');
+const logPath = path.join(logsDir, 'activity.log');
+
 if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir);
 }
@@ -51,11 +53,11 @@ bot.on('message', async (msg) => {
 
   // Проверка авторизации для основного функционала
   if (!authorizedUsers[chatId]) {
-    if (msg.text === PASSWORD) {
+    if (msg.text.toLowerCase().trim() === PASSWORD.toLowerCase().trim()) {
       authorizedUsers[chatId] = true;
       bot.sendMessage(chatId, 'Отлично, теперь погнали!', menu);
     } else {
-      bot.sendMessage(chatId, 'Ну что, родимый, обознался?');
+      bot.sendMessage(chatId, 'Ну что, родимый, обознался? Тут пароль требуется (перезапусти бота).');
     }
     return;
   }
@@ -66,15 +68,13 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (!logAuthorizedUsers[chatId] && msg.text === LOG_PASSWORD) {
+  if (!logAuthorizedUsers[chatId] && msg.text.toLowerCase().trim() === LOG_PASSWORD.toLowerCase().trim()) {
     logAuthorizedUsers[chatId] = true;
     bot.sendMessage(chatId, 'Теперь у тебя есть доступ к логам! Выбирай в меню.', menu);
     return;
   }
 
   if (msg.text === 'Get Logs') {
-    const logPath = path.join(logsDir, 'activity.log');
-
     if (!fs.existsSync(logPath)) {
       return bot.sendMessage(chatId, 'Логов пока нет', menu);
     }
@@ -87,7 +87,7 @@ bot.on('message', async (msg) => {
   }
 
   // Основной функционал бота
-  if (msg.text === 'Get GIF' && !isButtonDisabled) {
+  if (msg.text === 'get gif' && !isButtonDisabled) {
     isButtonDisabled = true;
     setTimeout(() => {
       isButtonDisabled = false;
@@ -127,12 +127,12 @@ bot.on('message', async (msg) => {
 
     const username = msg.from.username || 'Unknown username';
     const first_name = msg.from.first_name || 'Unknown first_name';
-    const logMsg = `User ${username}/${first_name} requested a gif at ${new Date().toISOString()}
+    const logMsg = `${username}/${first_name} запросил gif ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
 `;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
-  } else if (msg.text === 'Get Video') {
+  } else if (msg.text === 'get video') {
     if (!sentVideos[chatId]) {
       sentVideos[chatId] = [];
     }
@@ -161,12 +161,12 @@ bot.on('message', async (msg) => {
 
     const username = msg.from.username || 'Unknown username';
     const first_name = msg.from.first_name || 'Unknown first_name';
-    const logMsg = `User ${username}/${first_name} requested a video at ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
+    const logMsg = `${username}/${first_name} запросил видео ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
 `;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
-  } else if (msg.text === 'Get advice') {
+  } else if (msg.text === 'get advice') {
     await axios
       .get(adviceUrl)
       .then((response) => {
@@ -175,9 +175,9 @@ bot.on('message', async (msg) => {
       })
       .catch((error) => {
         console.error(error);
-        bot.sendMessage(chatId, 'Advices are not available right now');
+        bot.sendMessage(chatId, 'Советы пока недоступны, видимо что-то случилось с апи.');
       });
-  } else if (msg.text === 'Get GIF' && isButtonDisabled) {
+  } else if (msg.text === 'get gif' && isButtonDisabled) {
     bot.sendMessage(
       chatId,
       `Надо 5 секунд подождать перез новым запросом-то`,
