@@ -14,6 +14,7 @@ const sentGifs = {};
 const sentVideos = {}; // Храним информацию об отправленных видео
 const authorizedUsers = {}; // Список авторизованных пользователей
 const logAuthorizedUsers = {}; // Список пользователей, авторизованных для логов
+const MAX_VIDEO_SIZE_MB = +process.env.MAX_VIDEO_SIZE_MB * 1024 * 1024;
 const PASSWORD = process.env.BOT_PASSWORD || 'сиськи'; // Пароль для авторизации
 const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль для авторизации логов
 
@@ -42,7 +43,7 @@ bot.onText(/\/start/, (msg) => {
   const chatId = msg.chat.id;
 
   if (authorizedUsers[chatId]) {
-    bot.sendMessage(chatId, "Хэлоу странник! Захотелось клубнички?", menu);
+    bot.sendMessage(chatId, 'Хэлоу странник! Захотелось клубнички?', menu);
   } else {
     bot.sendMessage(chatId, 'Тут у меня пароль требуется, ну ты знаешь:');
   }
@@ -57,7 +58,10 @@ bot.on('message', async (msg) => {
       authorizedUsers[chatId] = true;
       bot.sendMessage(chatId, 'Отлично, теперь погнали!', menu);
     } else {
-      bot.sendMessage(chatId, 'Ну что, родимый, обознался? Тут пароль требуется (перезапусти бота).');
+      bot.sendMessage(
+        chatId,
+        'Ну что, родимый, обознался? Тут пароль требуется (перезапусти бота).'
+      );
     }
     return;
   }
@@ -68,9 +72,16 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (!logAuthorizedUsers[chatId] && msg.text.toLowerCase().trim() === LOG_PASSWORD.toLowerCase().trim()) {
+  if (
+    !logAuthorizedUsers[chatId] &&
+    msg.text.toLowerCase().trim() === LOG_PASSWORD.toLowerCase().trim()
+  ) {
     logAuthorizedUsers[chatId] = true;
-    bot.sendMessage(chatId, 'Теперь у тебя есть доступ к логам! Выбирай в меню.', menu);
+    bot.sendMessage(
+      chatId,
+      'Теперь у тебя есть доступ к логам! Выбирай в меню.',
+      menu
+    );
     return;
   }
 
@@ -127,7 +138,9 @@ bot.on('message', async (msg) => {
 
     const username = msg.from.username || 'Unknown username';
     const first_name = msg.from.first_name || 'Unknown first_name';
-    const logMsg = `${username}/${first_name} запросил gif ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
+    const logMsg = `${username}/${first_name} запросил gif ${
+      new Date().toISOString().split('T')[0]
+    } в ${new Date().toISOString().split('T')[1].split('.')[0]}
 `;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
@@ -153,15 +166,24 @@ bot.on('message', async (msg) => {
 
     const randomVideo =
       filteredVideos[Math.floor(Math.random() * filteredVideos.length)];
-    await bot.sendVideo(chatId, path.join(__dirname, 'videos', randomVideo), {
-      caption: '',
-    });
+
+    console.log(`Отправка видео: ${randomVideo}`)
+    const videoPath = path.join(__dirname, 'videos', randomVideo);
+    const fileSize = fs.statSync(videoPath).size;
+
+    if (fileSize > MAX_VIDEO_SIZE_MB) {
+      await bot.sendDocument(chatId, videoPath, { caption: 'Файл слишком большой, отправляю как документ.' });
+    } else {
+      await bot.sendVideo(chatId, videoPath, { caption: '' });
+    }
 
     sentVideos[chatId].push(videos.indexOf(randomVideo));
 
     const username = msg.from.username || 'Unknown username';
     const first_name = msg.from.first_name || 'Unknown first_name';
-    const logMsg = `${username}/${first_name} запросил видео ${new Date().toISOString().split('T')[0]} в ${new Date().toISOString().split('T')[1].split('.')[0]}
+    const logMsg = `${username}/${first_name} запросил видео ${
+      new Date().toISOString().split('T')[0]
+    } в ${new Date().toISOString().split('T')[1].split('.')[0]}
 `;
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
@@ -175,7 +197,10 @@ bot.on('message', async (msg) => {
       })
       .catch((error) => {
         console.error(error);
-        bot.sendMessage(chatId, 'Советы пока недоступны, видимо что-то случилось с апи.');
+        bot.sendMessage(
+          chatId,
+          'Советы пока недоступны, видимо что-то случилось с апи.'
+        );
       });
   } else if (msg.text === 'get gif' && isButtonDisabled) {
     bot.sendMessage(
