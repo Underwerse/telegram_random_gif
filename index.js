@@ -167,12 +167,14 @@ bot.on('message', async (msg) => {
     const randomVideo =
       filteredVideos[Math.floor(Math.random() * filteredVideos.length)];
 
-    console.log(`Отправка видео: ${randomVideo}`)
     const videoPath = path.join(__dirname, 'videos', randomVideo);
     const fileSize = fs.statSync(videoPath).size;
+    console.log(`Отправка видео: ${randomVideo} размером ${fileSize} байт`);
 
     if (fileSize > MAX_VIDEO_SIZE_MB) {
-      await bot.sendDocument(chatId, videoPath, { caption: 'Файл слишком большой, отправляю как документ.' });
+      await bot.sendDocument(chatId, videoPath, {
+        caption: 'Файл слишком большой, отправляю как документ.',
+      });
     } else {
       await bot.sendVideo(chatId, videoPath, { caption: '' });
     }
