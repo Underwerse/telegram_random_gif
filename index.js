@@ -21,8 +21,8 @@ const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль
 const menu = {
   reply_markup: {
     keyboard: [
-      [{ text: 'get gif' }, { text: 'get advice' }],
-      [{ text: 'get video' }, { text: 'get logs' }],
+      [{ text: 'gif' }, { text: 'advice' }],
+      [{ text: 'video' }, { text: 'logs' }],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -67,7 +67,7 @@ bot.on('message', async (msg) => {
   }
 
   // Проверка авторизации для логов
-  if (msg.text === 'get logs' && !logAuthorizedUsers[chatId]) {
+  if (msg.text === 'logs' && !logAuthorizedUsers[chatId]) {
     bot.sendMessage(chatId, 'Для доступа к логам нужен специальный пароль:');
     return;
   }
@@ -85,7 +85,7 @@ bot.on('message', async (msg) => {
     return;
   }
 
-  if (msg.text === 'get logs') {
+  if (msg.text === 'logs') {
     if (!fs.existsSync(logPath)) {
       return bot.sendMessage(chatId, 'Логов пока нет', menu);
     }
@@ -98,7 +98,7 @@ bot.on('message', async (msg) => {
   }
 
   // Основной функционал бота
-  if (msg.text === 'get gif' && !isButtonDisabled) {
+  if (msg.text === 'gif' && !isButtonDisabled) {
     isButtonDisabled = true;
     setTimeout(() => {
       isButtonDisabled = false;
@@ -145,7 +145,7 @@ bot.on('message', async (msg) => {
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
-  } else if (msg.text === 'get video') {
+  } else if (msg.text === 'video') {
     if (!sentVideos[chatId]) {
       sentVideos[chatId] = [];
     }
@@ -169,12 +169,16 @@ bot.on('message', async (msg) => {
 
     const videoPath = path.join(__dirname, 'videos', randomVideo);
     const fileSize = fs.statSync(videoPath).size;
+    console.log(
+      `typeof fileSize: ${typeof fileSize}, limit: ${MAX_VIDEO_SIZE_MB}`
+    );
     console.log(`Отправка видео: ${randomVideo} размером ${fileSize} байт`);
 
     if (fileSize > MAX_VIDEO_SIZE_MB) {
-      await bot.sendDocument(chatId, videoPath, {
-        caption: 'Файл слишком большой, отправляю как документ.',
-      });
+      await bot.sendMessage(
+        chatId,
+        `Что-то не удалось отправить, попробуй еще раз`
+      );
     } else {
       await bot.sendVideo(chatId, videoPath, { caption: '' });
     }
@@ -190,7 +194,7 @@ bot.on('message', async (msg) => {
     fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
       if (err) console.error(err);
     });
-  } else if (msg.text === 'get advice') {
+  } else if (msg.text === 'advice') {
     await axios
       .get(adviceUrl)
       .then((response) => {
@@ -204,7 +208,7 @@ bot.on('message', async (msg) => {
           'Советы пока недоступны, видимо что-то случилось с апи.'
         );
       });
-  } else if (msg.text === 'get gif' && isButtonDisabled) {
+  } else if (msg.text === 'gif' && isButtonDisabled) {
     bot.sendMessage(
       chatId,
       `Надо 5 секунд подождать перез новым запросом-то`,
