@@ -52,6 +52,27 @@ bot.onText(/\/start/, (msg) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
+  if (msg.video) {
+    const fileId = msg.video.file_id;
+    const file = await bot.getFile(fileId);
+    const filePath = file.file_path;
+    const videoUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+    const fileName = path.basename(filePath);
+    const savePath = path.join(videosDir, fileName);
+    
+    const fileStream = fs.createWriteStream(savePath);
+    https.get(videoUrl, (response) => {
+      response.pipe(fileStream);
+      fileStream.on('finish', () => {
+        fileStream.close();
+        bot.sendMessage(chatId, `Видео сохранено и теперь доступно по команде video!`);
+      });
+    }).on('error', (err) => {
+      console.error(err);
+      bot.sendMessage(chatId, `Ошибка при сохранении видео.`);
+    });
+  }
+
   // Проверка авторизации для основного функционала
   if (!authorizedUsers[chatId]) {
     if (msg.text.toLowerCase().trim() === PASSWORD.toLowerCase().trim()) {
