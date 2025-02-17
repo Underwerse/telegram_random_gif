@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "node index.js"
+    "dev": "/home/y_dev/.nvm/versions/node/v18.15.0/bin/node index.js"
   },
   "keywords": [],
   "author": "",

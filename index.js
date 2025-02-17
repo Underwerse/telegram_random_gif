@@ -17,6 +17,7 @@ const logAuthorizedUsers = {}; // Список пользователей, ав�
 const MAX_VIDEO_SIZE_MB = +process.env.MAX_VIDEO_SIZE_MB * 1024 * 1024;
 const PASSWORD = process.env.BOT_PASSWORD || 'сиськи'; // Пароль для авторизации
 const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль для авторизации логов
+const videosDir = path.join(__dirname, 'videos');
 
 const menu = {
   reply_markup: {
@@ -52,39 +53,58 @@ bot.onText(/\/start/, (msg) => {
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
 
-  if (msg.video) {
-    const fileId = msg.video.file_id;
-    const file = await bot.getFile(fileId);
-    const filePath = file.file_path;
-    const videoUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
-    const fileName = path.basename(filePath);
-    const savePath = path.join(videosDir, fileName);
-    
-    const fileStream = fs.createWriteStream(savePath);
-    https.get(videoUrl, (response) => {
-      response.pipe(fileStream);
-      fileStream.on('finish', () => {
-        fileStream.close();
-        bot.sendMessage(chatId, `Видео сохранено и теперь доступно по команде video!`);
-      });
-    }).on('error', (err) => {
-      console.error(err);
-      bot.sendMessage(chatId, `Ошибка при сохранении видео.`);
-    });
-  }
-
-  // Проверка авторизации для основного функционала
   if (!authorizedUsers[chatId]) {
-    if (msg.text.toLowerCase().trim() === PASSWORD.toLowerCase().trim()) {
+    if (msg.text?.toLowerCase().trim() === PASSWORD.toLowerCase().trim()) {
       authorizedUsers[chatId] = true;
-      bot.sendMessage(chatId, 'Отлично, теперь погнали!', menu);
+      bot.sendMessage(chatId, 'Авторизация успешна!', menu);
     } else {
-      bot.sendMessage(
-        chatId,
-        'Ну что, родимый, обознался? Тут пароль требуется (перезапусти бота).'
-      );
+      bot.sendMessage(chatId, 'Неверный пароль!');
     }
     return;
+  }
+
+  if (msg.video) {
+    try {
+      const fileId = msg.video.file_id;
+      const file = await bot.getFile(fileId);
+      const filePath = file.file_path;
+      const videoUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
+      const fileName = path.basename(filePath);
+      const savePath = path.join(videosDir, fileName);
+      
+      const response = await axios({
+        url: videoUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
+
+      const fileStream = fs.createWriteStream(savePath);
+      response.data.pipe(fileStream);
+      
+      fileStream.on('finish', () => {
+        fileStream.close();
+        bot.sendMessage(chatId, `Видео сохранено и теперь доступно по команде \`video ${fileName.split('.')[0]}\``, {
+          parse_mode: 'MarkdownV2',
+        });
+      });
+    } catch (error) {
+      console.error(error);
+      bot.sendMessage(chatId, `Ошибка при сохранении видео: ${error.message}`);
+    }
+  }
+
+  const videoCommand = msg.text?.match(/^video\s+(.+)/);
+  if (videoCommand) {
+    const requestedVideo = videoCommand[1].trim();
+    const videoPath = fs
+      .readdirSync(videosDir)
+      .find((file) => file.startsWith(requestedVideo));
+
+    if (videoPath) {
+      bot.sendVideo(chatId, path.join(videosDir, videoPath));
+    } else {
+      bot.sendMessage(chatId, `Видео \`${requestedVideo}\` не найдено.`, { parse_mode: 'MarkdownV2' });
+    }
   }
 
   // Проверка авторизации для логов
@@ -95,7 +115,7 @@ bot.on('message', async (msg) => {
 
   if (
     !logAuthorizedUsers[chatId] &&
-    msg.text.toLowerCase().trim() === LOG_PASSWORD.toLowerCase().trim()
+    msg.text?.toLowerCase().trim() === LOG_PASSWORD.toLowerCase().trim()
   ) {
     logAuthorizedUsers[chatId] = true;
     bot.sendMessage(
