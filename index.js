@@ -8,7 +8,7 @@ import crypto from 'crypto';
 dotenv.config();
 const __dirname = path.resolve();
 const token = process.env.TELEGRAM_TOKEN;
-const adviceUrl = 'http://fucking-great-advice.ru/api/random';
+const adviceUrl = 'https://fucking-great-advice.ru/api/random';
 const bot = new TelegramBot(token, { polling: true });
 
 const sentGifs = {};
