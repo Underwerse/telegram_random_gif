@@ -320,6 +320,13 @@ bot.on('message', async (msg) => {
       // Запоминаем, что превьюшка была отправлена
       sentPreviews.add(thumb);
     }
+    const logMsg = `${username}/${first_name} запросил превьюшки ${
+      new Date().toISOString().split('T')[0]
+    } в ${new Date().toISOString().split('T')[1].split('.')[0]}
+`;
+    fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
+      if (err) console.error(err);
+    });
   }
 });
 
@@ -333,6 +340,14 @@ bot.on('callback_query', async (query) => {
 
     if (videoFile) {
       await bot.sendVideo(chatId, path.join(videosDir, videoFile));
+
+      const logMsg = `${username}/${first_name} посмотрел видео \`${videoFile}\` ${
+        new Date().toISOString().split('T')[0]
+      } в ${new Date().toISOString().split('T')[1].split('.')[0]}
+  `;
+      fs.appendFile(path.join(logsDir, 'activity.log'), logMsg, (err) => {
+        if (err) console.error(err);
+      });
     } else {
       await bot.sendMessage(chatId, 'Видео не найдено или устарел ID');
     }
