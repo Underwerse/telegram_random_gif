@@ -23,7 +23,8 @@ const menu = {
   reply_markup: {
     keyboard: [
       [{ text: 'gif' }, { text: 'advice' }],
-      [{ text: 'video' }, { text: 'logs' }],
+      [{ text: 'video' }, { text: 'preview' }],
+      [{ text: 'logs' }],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
@@ -71,21 +72,41 @@ bot.on('message', async (msg) => {
       const videoUrl = `https://api.telegram.org/file/bot${token}/${filePath}`;
       const fileName = path.basename(filePath);
       const savePath = path.join(videosDir, fileName);
-      
+
+      // Проверка размера файла
+      const fileResponse = await axios.head(videoUrl);
+      const fileSize = parseInt(fileResponse.headers['content-length']);
+
+      // Если файл больше 20 МБ, не скачиваем напрямую, а отправляем ссылку
+      if (fileSize > 20 * 1024 * 1024) {
+        // 20 МБ
+        bot.sendMessage(
+          chatId,
+          `Файл слишком большой для прямого скачивания. Вы можете скачать его с облака по ссылке: ${videoUrl}`
+        );
+        return;
+      }
+
       const response = await axios({
         url: videoUrl,
         method: 'GET',
-        responseType: 'stream'
+        responseType: 'stream',
       });
 
       const fileStream = fs.createWriteStream(savePath);
       response.data.pipe(fileStream);
-      
+
       fileStream.on('finish', () => {
         fileStream.close();
-        bot.sendMessage(chatId, `Видео сохранено и теперь доступно по команде \`video ${fileName.split('.')[0]}\``, {
-          parse_mode: 'MarkdownV2',
-        });
+        bot.sendMessage(
+          chatId,
+          `Видео сохранено и теперь доступно по команде \`video ${
+            fileName.split('.')[0]
+          }\``,
+          {
+            parse_mode: 'MarkdownV2',
+          }
+        );
       });
     } catch (error) {
       console.error(error);
@@ -103,7 +124,9 @@ bot.on('message', async (msg) => {
     if (videoPath) {
       bot.sendVideo(chatId, path.join(videosDir, videoPath));
     } else {
-      bot.sendMessage(chatId, `Видео \`${requestedVideo}\` не найдено.`, { parse_mode: 'MarkdownV2' });
+      bot.sendMessage(chatId, `Видео \`${requestedVideo}\` не найдено.`, {
+        parse_mode: 'MarkdownV2',
+      });
     }
   }
 
@@ -255,5 +278,45 @@ bot.on('message', async (msg) => {
       `Надо 5 секунд подождать перез новым запросом-то`,
       menu
     );
+  } else if (msg.text === 'preview') {
+    const previewsDir = path.join(__dirname, 'thumbnails');
+    const allThumbs = fs.readdirSync(previewsDir);
+    const randomThumbs = allThumbs.sort(() => 0.5 - Math.random()).slice(0, 5);
+  
+    const inlineKeyboard = randomThumbs.map((file) => [
+      {
+        text: file.split('.')[0], // или название видео
+        callback_data: `preview_${file}`,
+      },
+    ]);
+  
+    for (const thumb of randomThumbs) {
+      await bot.sendPhoto(chatId, path.join(previewsDir, thumb));
+    }
+  
+    await bot.sendMessage(chatId, 'Выбери видео:', {
+      reply_markup: {
+        inline_keyboard: inlineKeyboard,
+      },
+    });
+  }
+});
+
+bot.on('callback_query', async (query) => {
+  const chatId = query.message.chat.id;
+  const data = query.data;
+
+  if (data.startsWith('preview_')) {
+    const filename = data.replace('preview_', '');
+    const videoName = filename.split('.')[0]; 
+    const videoFile = fs.readdirSync(videosDir).find((v) => v.startsWith(videoName));
+
+    if (videoFile) {
+      await bot.sendVideo(chatId, path.join(videosDir, videoFile));
+    } else {
+      await bot.sendMessage(chatId, 'Видео не найдено');
+    }
+
+    await bot.answerCallbackQuery({ callback_query_id: query.id });
   }
 });
