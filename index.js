@@ -24,7 +24,7 @@ const menu = {
     keyboard: [
       [{ text: 'gif' }, { text: 'advice' }],
       [{ text: 'video' }, { text: 'preview' }],
-      [{ text: 'logs' }],
+      // [{ text: 'logs' }],
     ],
     resize_keyboard: true,
     one_time_keyboard: false,
