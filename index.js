@@ -18,6 +18,7 @@ const MAX_VIDEO_SIZE_MB = +process.env.MAX_VIDEO_SIZE_MB * 1024 * 1024;
 const PASSWORD = process.env.BOT_PASSWORD || 'сиськи'; // Пароль для авторизации
 const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль для авторизации логов
 const videosDir = path.join(__dirname, 'videos');
+const videoIdMap = new Map(); // Хранит соответствие между ID видео и их именами
 
 const menu = {
   reply_markup: {
@@ -282,19 +283,27 @@ bot.on('message', async (msg) => {
     const previewsDir = path.join(__dirname, 'thumbnails');
     const allThumbs = fs.readdirSync(previewsDir);
     const randomThumbs = allThumbs.sort(() => 0.5 - Math.random()).slice(0, 5);
-
+  
     for (const thumb of randomThumbs) {
       const videoName = thumb.split('.')[0];
       const thumbPath = path.join(previewsDir, thumb);
-
+      const videoFile = fs.readdirSync(videosDir).find((v) => v.startsWith(videoName));
+      if (!videoFile) continue;
+  
+      const videoId = crypto.randomBytes(6).toString('hex');
+      videoIdMap.set(videoId, videoFile);
+  
+      const caption = `🎬 Видео: ${videoFile}`;
+  
       await bot.sendPhoto(chatId, thumbPath, {
-        caption: `Видео: ${videoName}`,
+        caption,
+        parse_mode: 'Markdown',
         reply_markup: {
           inline_keyboard: [
             [
               {
                 text: '▶ Смотреть',
-                callback_data: `play_${videoName}`,
+                callback_data: `play_${videoId}`,
               },
             ],
           ],
@@ -308,32 +317,16 @@ bot.on('callback_query', async (query) => {
   const chatId = query.message.chat.id;
   const data = query.data;
 
-  if (data.startsWith('preview_')) {
-    const filename = data.replace('preview_', '');
-    const videoName = filename.split('.')[0];
-    const videoFile = fs
-      .readdirSync(videosDir)
-      .find((v) => v.startsWith(videoName));
-
-    if (videoFile) {
-      await bot.sendVideo(chatId, path.join(videosDir, videoFile));
-    } else {
-      await bot.sendMessage(chatId, 'Видео не найдено');
-    }
-    await bot.answerCallbackQuery({ callback_query_id: query.id });
-  }
-
   if (data.startsWith('play_')) {
-    const videoName = data.replace('play_', '');
-    const videoFile = fs
-      .readdirSync(videosDir)
-      .find((v) => v.startsWith(videoName));
+    const videoId = data.replace('play_', '');
+    const videoFile = videoIdMap.get(videoId);
 
     if (videoFile) {
       await bot.sendVideo(chatId, path.join(videosDir, videoFile));
     } else {
-      await bot.sendMessage(chatId, `Видео ${videoName} не найдено`);
+      await bot.sendMessage(chatId, 'Видео не найдено или устарел ID');
     }
+
     await bot.answerCallbackQuery({ callback_query_id: query.id });
   }
 });
