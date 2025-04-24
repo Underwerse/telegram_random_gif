@@ -294,11 +294,11 @@ bot.on('message', async (msg) => {
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
   
-      const caption = `🎬 Видео: ${videoFile}`;
+      const caption = `🎬 Видео: ${escapeMarkdown(videoFile)}`;
   
       await bot.sendPhoto(chatId, thumbPath, {
         caption,
-        parse_mode: 'Markdown',
+        parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
             [
@@ -331,3 +331,24 @@ bot.on('callback_query', async (query) => {
     await bot.answerCallbackQuery({ callback_query_id: query.id });
   }
 });
+
+function escapeMarkdown(text) {
+  return text
+    .replace(/_/g, '\\_')
+    .replace(/\*/g, '\\*')
+    .replace(/\[/g, '\\[')
+    .replace(/`/g, '\\`')
+    .replace(/\(/g, '\\(')
+    .replace(/\)/g, '\\)')
+    .replace(/~/g, '\\~')
+    .replace(/>/g, '\\>')
+    .replace(/#/g, '\\#')
+    .replace(/\+/g, '\\+')
+    .replace(/-/g, '\\-')
+    .replace(/=/g, '\\=')
+    .replace(/\|/g, '\\|')
+    .replace(/\{/g, '\\{')
+    .replace(/\}/g, '\\}')
+    .replace(/\./g, '\\.')
+    .replace(/!/g, '\\!');
+}
