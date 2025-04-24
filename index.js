@@ -20,6 +20,7 @@ const PASSWORD = process.env.BOT_PASSWORD || 'сиськи'; // Пароль д�
 const LOG_PASSWORD = process.env.LOG_PASSWORD || 'письки'; // Пароль для авторизации логов
 const videosDir = path.join(__dirname, 'videos');
 const videoIdMap = new Map(); // Хранит соответствие между ID видео и их именами
+const sentPreviews = new Set();
 
 const menu = {
   reply_markup: {
@@ -284,18 +285,23 @@ bot.on('message', async (msg) => {
     const previewsDir = path.join(__dirname, 'thumbnails');
     const allThumbs = fs.readdirSync(previewsDir);
     const randomThumbs = allThumbs.sort(() => 0.5 - Math.random()).slice(0, 5);
-  
+
     for (const thumb of randomThumbs) {
       const videoName = thumb.split('.')[0];
       const thumbPath = path.join(previewsDir, thumb);
-      const videoFile = fs.readdirSync(videosDir).find((v) => v.startsWith(videoName));
+      const videoFile = fs
+        .readdirSync(videosDir)
+        .find((v) => v.startsWith(videoName));
       if (!videoFile) continue;
-  
+
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
-  
+
+      // Проверяем, была ли уже отправлена эта превьюшка
+      if (sentPreviews.has(thumb)) continue; // если превьюшка уже была отправлена, пропускаем её
+
       const caption = `🎬 Видео: ${escapeMarkdown(videoFile)}`;
-  
+
       await bot.sendPhoto(chatId, thumbPath, {
         caption,
         parse_mode: 'MarkdownV2',
@@ -310,6 +316,9 @@ bot.on('message', async (msg) => {
           ],
         },
       });
+
+      // Запоминаем, что превьюшка была отправлена
+      sentPreviews.add(thumb);
     }
   }
 });
