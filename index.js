@@ -160,7 +160,9 @@ bot.on('message', async (msg) => {
     const logs = fs.readFileSync(logPath, 'utf-8').split('\n').filter(Boolean);
     const lastLogs = logs.slice(-10).join('\n') || 'Чот пока нет ничего.';
 
-    bot.sendMessage(chatId, `Последние 10 действий:\n\n${lastLogs}`, menu);
+    bot.sendMessage(chatId, `*Последние 10 действий:*\n\n\`\`\`\n${lastLogs}\n\`\`\``, {
+      parse_mode: 'Markdown'
+    });
     return;
   }
 
