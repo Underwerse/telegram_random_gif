@@ -342,8 +342,8 @@ bot.on('callback_query', async (query) => {
 
     if (videoFile) {
       await bot.sendVideo(chatId, path.join(videosDir, videoFile));
-      const username = msg.from.username || 'Unknown username';
-      const first_name = msg.from.first_name || 'Unknown first_name';
+      const username = query.from.username || 'Unknown username';
+      const first_name = query.from.first_name || 'Unknown first_name';
       const logMsg = `${username}/${first_name} посмотрел видео \`${videoFile}\` ${
         new Date().toISOString().split('T')[0]
       } в ${new Date().toISOString().split('T')[1].split('.')[0]}
