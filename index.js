@@ -157,11 +157,15 @@ bot.on('message', async (msg) => {
       return bot.sendMessage(chatId, 'Логов пока нет', menu);
     }
 
-    const logs = fs.readFileSync(logPath, 'utf-8').split('\n').filter(Boolean);
+    const logs = fs
+      .readFileSync(logPath, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .map((line) => line.replace(/`(.+?)`/g, '`$1`')); // если надо - можно экранировать
     const lastLogs = logs.slice(-10).join('\n') || 'Чот пока нет ничего.';
 
-    bot.sendMessage(chatId, `*Последние 10 действий:*\n\n\`\`\`\n${lastLogs}\n\`\`\``, {
-      parse_mode: 'Markdown'
+    bot.sendMessage(chatId, `*Последние 10 действий:*\n\n${lastLogs}`, {
+      parse_mode: 'Markdown',
     });
     return;
   }
