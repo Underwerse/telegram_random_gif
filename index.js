@@ -3,6 +3,7 @@ import axios from 'axios';
 import fs from 'fs';
 import path from 'path';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 
 dotenv.config();
 const __dirname = path.resolve();
