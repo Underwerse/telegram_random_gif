@@ -282,23 +282,25 @@ bot.on('message', async (msg) => {
     const previewsDir = path.join(__dirname, 'thumbnails');
     const allThumbs = fs.readdirSync(previewsDir);
     const randomThumbs = allThumbs.sort(() => 0.5 - Math.random()).slice(0, 5);
-  
-    const inlineKeyboard = randomThumbs.map((file) => [
-      {
-        text: file.split('.')[0], // или название видео
-        callback_data: `preview_${file}`,
-      },
-    ]);
-  
+
     for (const thumb of randomThumbs) {
-      await bot.sendPhoto(chatId, path.join(previewsDir, thumb));
+      const videoName = thumb.split('.')[0];
+      const thumbPath = path.join(previewsDir, thumb);
+
+      await bot.sendPhoto(chatId, thumbPath, {
+        caption: `Видео: ${videoName}`,
+        reply_markup: {
+          inline_keyboard: [
+            [
+              {
+                text: '▶ Смотреть',
+                callback_data: `play_${videoName}`,
+              },
+            ],
+          ],
+        },
+      });
     }
-  
-    await bot.sendMessage(chatId, 'Выбери видео:', {
-      reply_markup: {
-        inline_keyboard: inlineKeyboard,
-      },
-    });
   }
 });
 
@@ -308,15 +310,30 @@ bot.on('callback_query', async (query) => {
 
   if (data.startsWith('preview_')) {
     const filename = data.replace('preview_', '');
-    const videoName = filename.split('.')[0]; 
-    const videoFile = fs.readdirSync(videosDir).find((v) => v.startsWith(videoName));
+    const videoName = filename.split('.')[0];
+    const videoFile = fs
+      .readdirSync(videosDir)
+      .find((v) => v.startsWith(videoName));
 
     if (videoFile) {
       await bot.sendVideo(chatId, path.join(videosDir, videoFile));
     } else {
       await bot.sendMessage(chatId, 'Видео не найдено');
     }
+    await bot.answerCallbackQuery({ callback_query_id: query.id });
+  }
 
+  if (data.startsWith('play_')) {
+    const videoName = data.replace('play_', '');
+    const videoFile = fs
+      .readdirSync(videosDir)
+      .find((v) => v.startsWith(videoName));
+
+    if (videoFile) {
+      await bot.sendVideo(chatId, path.join(videosDir, videoFile));
+    } else {
+      await bot.sendMessage(chatId, `Видео ${videoName} не найдено`);
+    }
     await bot.answerCallbackQuery({ callback_query_id: query.id });
   }
 });
