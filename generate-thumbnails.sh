@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VIDEOS_DIR="./videos"
-THUMBS_DIR="./thumbnails"
+VIDEOS_DIR="./data/videos"
+THUMBS_DIR="./data/thumbnails"
 
 mkdir -p "$THUMBS_DIR"
 
@@ -20,9 +20,8 @@ for video in "$VIDEOS_DIR"/*; do
 
   echo "Создаю превью для: $filename"
 
-  # ffmpeg: берем кадр с 2-й секунды, 1 кадр, высокое качество
-  ffmpeg -ss 00:00:02 -i "$video" -vframes 1 -q:v 2 "$thumb"
-
+  # ffmpeg: берем кадр с 5-й секунды, 1 кадр, высокое качество
+  "/c/Program Files/ffmpeg/bin/ffmpeg.exe" -ss 00:00:05 -i "$video" -vframes 1 -q:v 2 "$thumb"
   if [ $? -eq 0 ]; then
     echo "✅ Превью создано: $thumb"
   else
