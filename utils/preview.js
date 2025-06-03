@@ -21,6 +21,8 @@ export async function sendVideoPreviews(
     const name = from.first_name || 'anon';
     let thumbsToSend = [];
     const thumbs = fs.readdirSync(CONFIG.PATHS.THUMBS);
+    
+    if (!sentPreviews[chatId]) sentPreviews[chatId] = new Set();
 
     if (!show) {
       thumbsToSend = thumbs
@@ -29,7 +31,7 @@ export async function sendVideoPreviews(
           const videoFile = fs
             .readdirSync(CONFIG.PATHS.VIDEOS)
             .find((v) => v.startsWith(base));
-          return videoFile && filterFn(videoFile) && !sentPreviews.has(thumb);
+          return videoFile && filterFn(videoFile) && !sentPreviews[chatId].has(thumb);
         })
         .sort(() => 0.5 - Math.random())
         .slice(0, limit);
@@ -43,17 +45,18 @@ export async function sendVideoPreviews(
       if (matchedVideo) {
         const base = path.basename(matchedVideo, path.extname(matchedVideo));
         const matchedThumb = thumbs.find(
-          (thumb) => path.basename(thumb, path.extname(thumb)) === base
+          (thumb) => path.basename(thumb, path.extname(thumb)).toLowerCase().trim() === base.toLowerCase().trim()
         );
 
-        if (matchedThumb && !sentPreviews.has(matchedThumb)) {
+        if (matchedThumb) {
           thumbsToSend = [matchedThumb];
         }
       }
     }
 
     if (!thumbsToSend.length) {
-      return bot.sendMessage(chatId, 'Нет подходящих превью.');
+      sentPreviews[chatId].clear();
+      return bot.sendMessage(chatId, 'Нет подходящих превью, обнуляем статистику.');
     }
 
     for (const thumb of thumbsToSend) {
@@ -90,7 +93,7 @@ export async function sendVideoPreviews(
         },
       });
 
-      sentPreviews.add(thumb);
+      sentPreviews[chatId].add(thumb);
 
       logActivity(
         `${username}/${name} запросил ${text} ${new Date().toISOString()}`

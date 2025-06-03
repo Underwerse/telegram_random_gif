@@ -12,7 +12,7 @@ import { logActivity } from '../utils/logger.js';
 
 const authorized = {};
 const logAuthorized = {};
-const sentGifs = {};
+const sentGifs = new Set();
 
 const menu = {
   reply_markup: {
@@ -66,7 +66,8 @@ export async function handleMessage(bot, msg) {
       return bot.sendMessage(chatId, '✅ Логи теперь доступны.', menu);
 
     case 'gif':
-      if (isGifCooldown) return bot.sendMessage(chatId, '⏳ Подожди немного.');
+      if (isGifCooldown)
+        return bot.sendMessage(chatId, '⏳ Подожди 5 секунд, ковбой.');
       isGifCooldown = true;
       setTimeout(() => (isGifCooldown = false), 5000);
       return sendGifs(bot, chatId, username, name);
@@ -81,12 +82,41 @@ export async function handleMessage(bot, msg) {
       return;
 
     case 'clear':
-      sentGifs.clear();
-      sentPreviews.clear();
+      try {
+        sentGifs[chatId]?.clear();
+        sentPreviews[chatId]?.clear();
 
-      bot.sendMessage(msg.chat.id, '🔄 Статистика обнулена. Теперь все как в первый раз!');
+        bot.sendMessage(
+          msg.chat.id,
+          '🔄 Статистика обнулена. Теперь все как в первый раз!'
+        );
+      } catch (error) {
+        console.error('Ошибка при очистке статистики:', error.message);
+        bot.sendMessage(msg.chat.id, '❌ Ошибка при очистке статистики.');
+      } finally {
+        return;
+      }
+    case 'stats':
+      const gifs = sentGifs[chatId]
+        ? '- ' +
+          Array.from(sentGifs[chatId])
+            .map((gif) => gif.split('.')[0].trim())
+            .join('\n- ')
+        : 'пусто';
+      const previews = sentPreviews[chatId]
+        ? Array.from(sentPreviews[chatId])
+            .map((preview) => `\`show ${preview.split('.')[0].trim()}\``)
+            .join('\n')
+        : 'пусто';
 
-      return;
+      const message =
+        `📊 *Статистика для чата*\n\n` +
+        `*GIF, которые уже были отправлены:*\n${gifs}\n\n` +
+        `*Превью, которые уже были показаны:*\n${previews}`;
+
+      return bot.sendMessage(chatId, escapeMarkdown(message), {
+        parse_mode: 'MarkdownV2',
+      });
 
     case 'advice':
       try {
