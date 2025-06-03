@@ -1,0 +1,71 @@
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import { CONFIG } from '../config.js';
+import { escapeMarkdown } from './helpers.js';
+import { logActivity } from './logger.js';
+
+const videoIdMap = new Map();
+const sentPreviews = new Set();
+
+export async function sendVideoPreviews(
+  bot,
+  msg,
+  filterFn = () => true,
+  limit = 5
+) {
+  try {
+    const { chat, text, from } = msg;
+    const chatId = chat.id;
+    const username = from.username || 'user';
+    const name = from.first_name || 'anon';
+
+    const thumbs = fs.readdirSync(CONFIG.PATHS.THUMBS);
+    const thumbsToSend = thumbs
+      .filter((thumb) => {
+        const base = path.basename(thumb, path.extname(thumb));
+        const videoFile = fs
+          .readdirSync(CONFIG.PATHS.VIDEOS)
+          .find((v) => v.startsWith(base));
+        return videoFile && filterFn(videoFile) && !sentPreviews.has(thumb);
+      })
+      .sort(() => 0.5 - Math.random())
+      .slice(0, limit);
+
+    if (!thumbsToSend.length) {
+      return bot.sendMessage(chatId, 'Нет подходящих превью.');
+    }
+
+    for (const thumb of thumbsToSend) {
+      const base = path.basename(thumb, path.extname(thumb));
+      const videoFile = fs
+        .readdirSync(CONFIG.PATHS.VIDEOS)
+        .find((v) => v.startsWith(base));
+      const videoId = crypto.randomBytes(6).toString('hex');
+      videoIdMap.set(videoId, videoFile);
+
+      await bot.sendPhoto(chatId, path.join(CONFIG.PATHS.THUMBS, thumb), {
+        caption: `🎬 Видео: ${escapeMarkdown(videoFile)}`,
+        parse_mode: 'MarkdownV2',
+        reply_markup: {
+          inline_keyboard: [
+            [{ text: '▶ Смотреть', callback_data: `play_${videoId}` }],
+          ],
+        },
+      });
+
+      sentPreviews.add(thumb);
+
+      logActivity(
+        `${username}/${name} запросил ${text} ${new Date().toISOString()}`
+      );
+    }
+  } catch (error) {
+    console.error('Ошибка при отправке превью видео:', error);
+    bot.sendMessage(msg.chat.id, 'Произошла ошибка при отправке превью видео.');
+  }
+}
+
+export function getVideoById(videoId) {
+  return videoIdMap.get(videoId);
+}
