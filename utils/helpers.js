@@ -29,3 +29,19 @@ export function generateThumbnail(videoPath, outputPath) {
     throw new Error('Не удалось создать миниатюру видео');
   }
 }
+
+export function getVideoDuration(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      const duration = metadata.format.duration;
+      resolve(duration);
+    });
+  });
+}
+
+export function formatDuration(seconds) {
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}

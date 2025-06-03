@@ -1,8 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
+import ffmpeg from 'fluent-ffmpeg';
 import { CONFIG } from '../config.js';
-import { escapeMarkdown } from './helpers.js';
+import { escapeMarkdown, formatDuration, getVideoDuration } from './helpers.js';
 import { logActivity } from './logger.js';
 
 const videoIdMap = new Map();
@@ -61,11 +62,27 @@ export async function sendVideoPreviews(
       const videoFile = fs
         .readdirSync(CONFIG.PATHS.VIDEOS)
         .find((v) => v.startsWith(base));
+
+      if (!videoFile) continue;
+
+      const videoPath = path.join(CONFIG.PATHS.VIDEOS, videoFile);
+
+      let durationStr = '';
+      try {
+        const durationSec = await getVideoDuration(videoPath);
+        durationStr = `\n⏱️: ${formatDuration(durationSec)}`;
+      } catch (e) {
+        console.warn(
+          `Не удалось получить длительность: ${videoFile}`,
+          e.message
+        );
+      }
+
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
 
       await bot.sendPhoto(chatId, path.join(CONFIG.PATHS.THUMBS, thumb), {
-        caption: `🎬 Видео: ${escapeMarkdown(videoFile)}`,
+        caption: `🎬: ${escapeMarkdown(videoFile)}${durationStr}`,
         parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
@@ -81,7 +98,7 @@ export async function sendVideoPreviews(
       );
     }
   } catch (error) {
-    console.error('Ошибка при отправке превью видео:', error);
+    console.error('Ошибка при отправке превью видео:', error.message);
     bot.sendMessage(msg.chat.id, 'Произошла ошибка при отправке превью видео.');
   }
 }
