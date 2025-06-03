@@ -1,13 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import ffmpeg from 'fluent-ffmpeg';
 import { CONFIG } from '../config.js';
 import { escapeMarkdown, formatDuration, getVideoDuration } from './helpers.js';
 import { logActivity } from './logger.js';
 
-const videoIdMap = new Map();
-const sentPreviews = new Set();
+export const videoIdMap = new Map();
+export const sentPreviews = new Set();
 
 export async function sendVideoPreviews(
   bot,
