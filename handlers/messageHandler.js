@@ -2,7 +2,7 @@ import fs from 'fs';
 import axios from 'axios';
 import path from 'path';
 import { CONFIG } from '../config.js';
-import { sendVideoPreviews } from '../utils/preview.js';
+import { sendVideoPreviews, sentPreviews } from '../utils/preview.js';
 import {
   escapeMarkdown,
   generateThumbnail,
@@ -77,6 +77,14 @@ export async function handleMessage(bot, msg) {
       return;
     case 'preview':
       await sendVideoPreviews(bot, msg, () => true, 5);
+
+      return;
+
+    case 'clear':
+      sentGifs.clear();
+      sentPreviews.clear();
+
+      bot.sendMessage(msg.chat.id, '🔄 Статистика обнулена. Теперь все как в первый раз!');
 
       return;
 
