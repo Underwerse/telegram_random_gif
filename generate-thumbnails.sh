@@ -1,7 +1,7 @@
 #!/bin/bash
 
-VIDEOS_DIR="./videos"
-THUMBS_DIR="./thumbnails"
+VIDEOS_DIR="./data/videos"
+THUMBS_DIR="./data/thumbnails"
 
 mkdir -p "$THUMBS_DIR"
 
