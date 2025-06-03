@@ -15,22 +15,42 @@ export async function sendVideoPreviews(
   limit = 5
 ) {
   try {
-    const { chat, text, from } = msg;
+    const { chat, text, from, show } = msg;
     const chatId = chat.id;
     const username = from.username || 'user';
     const name = from.first_name || 'anon';
-
+    let thumbsToSend = [];
     const thumbs = fs.readdirSync(CONFIG.PATHS.THUMBS);
-    const thumbsToSend = thumbs
-      .filter((thumb) => {
-        const base = path.basename(thumb, path.extname(thumb));
-        const videoFile = fs
-          .readdirSync(CONFIG.PATHS.VIDEOS)
-          .find((v) => v.startsWith(base));
-        return videoFile && filterFn(videoFile) && !sentPreviews.has(thumb);
-      })
-      .sort(() => 0.5 - Math.random())
-      .slice(0, limit);
+
+    if (!show) {
+      thumbsToSend = thumbs
+        .filter((thumb) => {
+          const base = path.basename(thumb, path.extname(thumb));
+          const videoFile = fs
+            .readdirSync(CONFIG.PATHS.VIDEOS)
+            .find((v) => v.startsWith(base));
+          return videoFile && filterFn(videoFile) && !sentPreviews.has(thumb);
+        })
+        .sort(() => 0.5 - Math.random())
+        .slice(0, limit);
+    } else {
+      // ищем видео, у которого имя содержит ровно msg.text (text)
+      const videos = fs.readdirSync(CONFIG.PATHS.VIDEOS);
+      const matchedVideo = videos.find((videoFile) =>
+        videoFile.toLowerCase().includes(text.toLowerCase())
+      );
+
+      if (matchedVideo) {
+        const base = path.basename(matchedVideo, path.extname(matchedVideo));
+        const matchedThumb = thumbs.find(
+          (thumb) => path.basename(thumb, path.extname(thumb)) === base
+        );
+
+        if (matchedThumb && !sentPreviews.has(matchedThumb)) {
+          thumbsToSend = [matchedThumb];
+        }
+      }
+    }
 
     if (!thumbsToSend.length) {
       return bot.sendMessage(chatId, 'Нет подходящих превью.');

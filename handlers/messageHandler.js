@@ -3,7 +3,11 @@ import axios from 'axios';
 import path from 'path';
 import { CONFIG } from '../config.js';
 import { sendVideoPreviews } from '../utils/preview.js';
-import { shuffleArray } from '../utils/helpers.js';
+import {
+  escapeMarkdown,
+  generateThumbnail,
+  shuffleArray,
+} from '../utils/helpers.js';
 import { logActivity } from '../utils/logger.js';
 
 const authorized = {};
@@ -42,9 +46,11 @@ export async function handleMessage(bot, msg) {
   }
 
   if (text?.startsWith('show ')) {
-    const query = text.slice(6).toLowerCase().trim();
-    return sendVideoPreviews(bot, chatId, (name) =>
-      name.toLowerCase().includes(query), 1
+    const query = text.slice(5).toLowerCase().trim();
+    return sendVideoPreviews(
+      bot,
+      { ...msg, text: query, show: true },
+      (videoFile) => videoFile.toLowerCase().includes(query)
     );
   }
 
@@ -66,12 +72,12 @@ export async function handleMessage(bot, msg) {
       return sendGifs(bot, chatId, username, name);
 
     case 'video':
-			await sendVideoPreviews(bot, msg, () => true, 1);
-      
+      await sendVideoPreviews(bot, msg, () => true, 1);
+
       return;
     case 'preview':
       await sendVideoPreviews(bot, msg, () => true, 5);
-      
+
       return;
 
     case 'advice':
@@ -94,88 +100,114 @@ async function handleVideoUpload(bot, msg) {
   const file = await bot.getFile(video.file_id);
   const fileUrl = `https://api.telegram.org/file/bot${CONFIG.TOKEN}/${file.file_path}`;
   const fileName = file.file_path.split('/').pop();
+  const baseName = fileName.split('.')[0];
   const savePath = `${CONFIG.PATHS.VIDEOS}/${fileName}`;
+  const thumbPath = `${CONFIG.PATHS.THUMBS}/${baseName}.jpg`;
 
-  const { headers } = await axios.head(fileUrl);
-  if (+headers['content-length'] > CONFIG.MAX_VIDEO_SIZE) {
-    return bot.sendMessage(chat.id, `Файл большой, бери ссылку: ${fileUrl}`);
+  try {
+    const { headers } = await axios.head(fileUrl);
+    if (+headers['content-length'] > CONFIG.MAX_VIDEO_SIZE) {
+      return bot.sendMessage(chat.id, `Файл большой, бери ссылку: ${fileUrl}`);
+    }
+
+    const res = await axios.get(fileUrl, { responseType: 'stream' });
+    const writer = fs.createWriteStream(savePath);
+    res.data.pipe(writer);
+
+    writer.on('finish', () => {
+      generateThumbnail(savePath, thumbPath)
+        .then(() => {
+          bot.sendMessage(chat.id, `🎉 Сохранил как: \`show ${baseName}\``, {
+            parse_mode: 'MarkdownV2',
+          });
+        })
+        .catch((err) => {
+          console.error('Ошибка генерации превью:', err);
+          bot.sendMessage(chat.id, `Видео сохранено, но превью не создано.`);
+        });
+    });
+
+    writer.on('error', (err) => {
+      bot.sendMessage(chat.id, `Ошибка при сохранении: ${err.message}`);
+    });
+  } catch (err) {
+    console.error(err);
+    bot.sendMessage(chat.id, `Ошибка загрузки: ${err.message}`);
   }
-
-  const res = await axios.get(fileUrl, { responseType: 'stream' });
-  const writer = fs.createWriteStream(savePath);
-  res.data.pipe(writer);
-
-  writer.on('finish', () => {
-    bot.sendMessage(
-      chat.id,
-      `🎉 Сохранил как: \`video ${fileName.split('.')[0]}\``,
-      { parse_mode: 'MarkdownV2' }
-    );
-  });
-
-  writer.on('error', (err) => {
-    bot.sendMessage(chat.id, `Ошибка при сохранении: ${err.message}`);
-  });
 }
 
 function sendLogs(bot, chatId) {
-  if (!fs.existsSync(CONFIG.PATHS.LOGS))
-    return bot.sendMessage(chatId, 'Пока пусто.');
-  const logs = fs
-    .readFileSync(CONFIG.PATHS.LOGS, 'utf-8')
-    .split('\n')
-    .filter(Boolean)
-    .slice(-10)
-    .join('\n');
-  bot.sendMessage(chatId, `*Последние действия:*\n\n${logs}`, {
-    parse_mode: 'Markdown',
-  });
+  try {
+    if (!fs.existsSync(CONFIG.PATHS.LOGS))
+      return bot.sendMessage(chatId, 'Пока пусто.');
+    const logs = fs
+      .readFileSync(CONFIG.PATHS.LOGS, 'utf-8')
+      .split('\n')
+      .filter(Boolean)
+      .slice(-10)
+      .join('\n');
+    const escapedLogs = escapeMarkdown(logs);
+    bot.sendMessage(chatId, `*Последние действия:*\n\n${escapedLogs}`, {
+      parse_mode: 'MarkdownV2',
+    });
+  } catch (error) {
+    console.error('Ошибка при чтении логов:', error);
+    bot.sendMessage(chatId, '❌ Ошибка при чтении логов.');
+  }
 }
 
 async function sendGifs(bot, chatId, username, name) {
-  if (!sentGifs[chatId]) sentGifs[chatId] = new Set();
+  try {
+    if (!sentGifs[chatId]) sentGifs[chatId] = new Set();
 
-  const allFiles = fs.readdirSync(CONFIG.PATHS.GIFS);
-  const gifs = allFiles.filter((file) => file.toLowerCase().endsWith('.gif'));
+    const allFiles = fs.readdirSync(CONFIG.PATHS.GIFS);
+    const gifs = allFiles.filter((file) => file.toLowerCase().endsWith('.gif'));
 
-  if (!gifs.length) {
-    return bot.sendMessage(chatId, '📂 В папке `gifs` вообще нет GIF-файлов.');
-  }
-
-  const unseen = gifs.filter((gif) => !sentGifs[chatId].has(gif));
-
-  if (unseen.length === 0) {
-    sentGifs[chatId].clear();
-    return bot.sendMessage(
-      chatId,
-      '🌀 Всё уже показано. Обнулил, начинай заново.',
-      menu
-    );
-  }
-
-  const selected = shuffleArray(unseen).slice(0, 5);
-  const delay = (ms) => new Promise((res) => setTimeout(res, ms));
-
-  for (const gif of selected) {
-		const fullPath = path.join(CONFIG.PATHS.GIFS, gif);
-
-    try {
-      await delay(2000);
-      if (!fs.existsSync(fullPath)) {
-        console.warn(`Файл не найден: ${fullPath}`);
-        continue;
-      }
-
-      await bot.sendDocument(chatId, fullPath, {
-        contentType: 'image/gif',
-      });
-
-      sentGifs[chatId].add(gif);
-    } catch (err) {
-      console.error(`Ошибка при отправке гифки ${gif}:`, err.message);
-      await bot.sendMessage(chatId, `❌ Не удалось отправить гифку: ${gif}`);
+    if (!gifs.length) {
+      return bot.sendMessage(
+        chatId,
+        '📂 В папке `gifs` вообще нет GIF-файлов.'
+      );
     }
-  }
 
-  logActivity(`${username}/${name} запросил gif ${new Date().toISOString()}`);
+    const unseen = gifs.filter((gif) => !sentGifs[chatId].has(gif));
+
+    if (unseen.length === 0) {
+      sentGifs[chatId].clear();
+      return bot.sendMessage(
+        chatId,
+        '🌀 Всё уже показано. Обнулил, начинай заново.',
+        menu
+      );
+    }
+
+    const selected = shuffleArray(unseen).slice(0, 5);
+    const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+    for (const gif of selected) {
+      const fullPath = path.join(CONFIG.PATHS.GIFS, gif);
+
+      try {
+        await delay(2000);
+        if (!fs.existsSync(fullPath)) {
+          console.warn(`Файл не найден: ${fullPath}`);
+          continue;
+        }
+
+        await bot.sendDocument(chatId, fullPath, {
+          contentType: 'image/gif',
+        });
+
+        sentGifs[chatId].add(gif);
+      } catch (err) {
+        console.error(`Ошибка при отправке гифки ${gif}:`, err.message);
+        await bot.sendMessage(chatId, `❌ Не удалось отправить гифку: ${gif}`);
+      }
+    }
+
+    logActivity(`${username}/${name} запросил gif ${new Date().toISOString()}`);
+  } catch (error) {
+    console.error('Ошибка при отправке гифок:', error);
+    await bot.sendMessage(chatId, '❌ Ошибка при отправке гифок.');
+  }
 }

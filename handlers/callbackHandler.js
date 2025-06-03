@@ -19,7 +19,7 @@ export async function handleCallback(bot, query) {
         await bot.sendVideo(chatId, path.join(CONFIG.PATHS.VIDEOS, videoFile));
 
         // лог
-        logActivity(`${username}/${name} посмотрел ${videoFile} ${new Date().toISOString()}`);
+        logActivity(`${username}/${name} посмотрел \`show ${videoFile}\` ${new Date().toISOString()}`);
       } catch (err) {
         console.error('Ошибка при отправке видео:', err);
         await bot.sendMessage(chatId, '⚠ Не удалось отправить видео.');
