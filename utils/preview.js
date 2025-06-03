@@ -96,7 +96,7 @@ export async function sendVideoPreviews(
       sentPreviews[chatId].add(thumb);
 
       logActivity(
-        `${username}/${name} запросил ${text} \`show ${thumb}\` ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+        `${username}/${name} запросил ${text} \`show ${thumb.split('.')[0]}\` ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
       );
     }
   } catch (error) {
