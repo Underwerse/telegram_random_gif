@@ -243,7 +243,7 @@ async function sendGifs(bot, chatId, username, name) {
       }
     }
 
-    logActivity(`${username}/${name} запросил gif ${new Date().toISOString()}`);
+    logActivity(`${username}/${name} запросил gif ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
   } catch (error) {
     console.error('Ошибка при отправке гифок:', error);
     await bot.sendMessage(chatId, '❌ Ошибка при отправке гифок.');
