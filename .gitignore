@@ -3,3 +3,5 @@ gifs/
 logs/
 .env
 videos/
+thumbnails/
+data/
