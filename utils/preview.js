@@ -2,7 +2,13 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { CONFIG } from '../config.js';
-import { escapeMarkdown, formatDuration, formatSize, getVideoDuration, getVideoSize } from './helpers.js';
+import {
+  escapeMarkdown,
+  formatDuration,
+  formatSize,
+  getVideoDuration,
+  getVideoSize,
+} from './helpers.js';
 import { logActivity } from './logger.js';
 
 export const videoIdMap = new Map();
@@ -21,7 +27,7 @@ export async function sendVideoPreviews(
     const name = from.first_name || 'anon';
     let thumbsToSend = [];
     const thumbs = fs.readdirSync(CONFIG.PATHS.THUMBS);
-    
+
     if (!sentPreviews[chatId]) sentPreviews[chatId] = new Set();
 
     if (!show) {
@@ -31,32 +37,37 @@ export async function sendVideoPreviews(
           const videoFile = fs
             .readdirSync(CONFIG.PATHS.VIDEOS)
             .find((v) => v.startsWith(base));
-          return videoFile && filterFn(videoFile) && !sentPreviews[chatId].has(thumb);
+          return (
+            videoFile && filterFn(videoFile) && !sentPreviews[chatId].has(thumb)
+          );
         })
         .sort(() => 0.5 - Math.random())
         .slice(0, limit);
     } else {
-      // ищем видео, у которого имя содержит ровно msg.text (text)
       const videos = fs.readdirSync(CONFIG.PATHS.VIDEOS);
-      const matchedVideo = videos.find((videoFile) =>
+      const matchedVideos = videos.filter((videoFile) =>
         videoFile.toLowerCase().includes(text.toLowerCase())
       );
 
-      if (matchedVideo) {
-        const base = path.basename(matchedVideo, path.extname(matchedVideo));
-        const matchedThumb = thumbs.find(
-          (thumb) => path.basename(thumb, path.extname(thumb)).toLowerCase().trim() === base.toLowerCase().trim()
-        );
-
-        if (matchedThumb) {
-          thumbsToSend = [matchedThumb];
-        }
-      }
+      thumbsToSend = matchedVideos
+        .map((videoFile) => {
+          const base = path.basename(videoFile, path.extname(videoFile));
+          return thumbs.find(
+            (thumb) =>
+              path.basename(thumb, path.extname(thumb)).toLowerCase().trim() ===
+              base.toLowerCase().trim()
+          );
+        })
+        .filter(Boolean) // убираем undefined
+        .slice(0, limit); // ограничение по количеству
     }
 
     if (!thumbsToSend.length) {
       sentPreviews[chatId].clear();
-      return bot.sendMessage(chatId, 'Нет подходящих превью, обнуляем статистику.');
+      return bot.sendMessage(
+        chatId,
+        'Нет подходящих превью, обнуляем статистику.'
+      );
     }
 
     for (const thumb of thumbsToSend) {
@@ -85,17 +96,16 @@ export async function sendVideoPreviews(
         const sizeBits = await getVideoSize(videoPath);
         sizeStr = `  📦: ${formatSize(sizeBits)}`;
       } catch (e) {
-        console.warn(
-          `Не удалось получить размер: ${videoFile}`,
-          e.message
-        );
+        console.warn(`Не удалось получить размер: ${videoFile}`, e.message);
       }
 
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
 
       await bot.sendPhoto(chatId, path.join(CONFIG.PATHS.THUMBS, thumb), {
-        caption: `🎬: ${escapeMarkdown(videoFile)}${escapeMarkdown(durationStr)}${escapeMarkdown(sizeStr)}`,
+        caption: `🎬: ${escapeMarkdown(videoFile)}${escapeMarkdown(
+          durationStr
+        )}${escapeMarkdown(sizeStr)}`,
         parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
@@ -107,7 +117,11 @@ export async function sendVideoPreviews(
       sentPreviews[chatId].add(thumb);
 
       logActivity(
-        `${username}/${name} запросил ${text} \`show ${thumb.split('.')[0]}\` ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`
+        `${username}/${name} запросил ${text} \`show ${
+          thumb.split('.')[0]
+        }\` ${new Date().toLocaleString('ru-RU', {
+          timeZone: 'Europe/Moscow',
+        })}`
       );
     }
   } catch (error) {
