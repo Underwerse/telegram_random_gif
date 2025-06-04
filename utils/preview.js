@@ -67,11 +67,16 @@ export async function sendVideoPreviews(
         .slice(0, limit);
     }
 
-    if (!thumbsToSend.length) {
+    if (!thumbsToSend.length && !show) {
       sentPreviews[chatId].clear();
       return bot.sendMessage(
         chatId,
         'Нет подходящих превью, обнуляем статистику.'
+      );
+    } else if (!thumbsToSend.length) {
+      return bot.sendMessage(
+        chatId,
+        'Нет подходящих превью по запросу. Попробуй другой запрос.'
       );
     }
 
