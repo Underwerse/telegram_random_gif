@@ -52,18 +52,19 @@ export async function sendVideoPreviews(
       thumbsToSend = matchedVideos
         .map((videoFile) => {
           const base = path.basename(videoFile, path.extname(videoFile));
-          return thumbs
-            .find(
-              (thumb) =>
-                path
-                  .basename(thumb, path.extname(thumb))
-                  .toLowerCase()
-                  .trim() === base.toLowerCase().trim()
-            )
-            .filter((thumb) => !sentPreviews[chatId].has(thumb));
+          const thumb = thumbs.find(
+            (thumb) =>
+              path.basename(thumb, path.extname(thumb)).toLowerCase().trim() ===
+              base.toLowerCase().trim()
+          );
+          // фильтруем здесь
+          if (thumb && !sentPreviews[chatId].has(thumb)) {
+            return thumb;
+          }
+          return null;
         })
-        .filter(Boolean) // убираем undefined
-        .slice(0, limit); // ограничение по количеству
+        .filter(Boolean)
+        .slice(0, limit);
     }
 
     if (!thumbsToSend.length) {
