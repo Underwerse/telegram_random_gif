@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { CONFIG } from '../config.js';
-import { escapeMarkdown, formatDuration, getVideoDuration } from './helpers.js';
+import { escapeMarkdown, formatDuration, formatSize, getVideoDuration, getVideoSize } from './helpers.js';
 import { logActivity } from './logger.js';
 
 export const videoIdMap = new Map();
@@ -80,11 +80,22 @@ export async function sendVideoPreviews(
         );
       }
 
+      let sizeStr = '';
+      try {
+        const sizeBits = await getVideoSize(videoPath);
+        sizeStr = `  📦: ${formatSize(sizeBits)}`;
+      } catch (e) {
+        console.warn(
+          `Не удалось получить размер: ${videoFile}`,
+          e.message
+        );
+      }
+
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
 
       await bot.sendPhoto(chatId, path.join(CONFIG.PATHS.THUMBS, thumb), {
-        caption: `🎬: ${escapeMarkdown(videoFile)}${durationStr}`,
+        caption: `🎬: ${escapeMarkdown(videoFile)}${escapeMarkdown(durationStr)}${escapeMarkdown(sizeStr)}`,
         parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [

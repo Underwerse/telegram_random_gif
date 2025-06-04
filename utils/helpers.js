@@ -40,8 +40,30 @@ export function getVideoDuration(filePath) {
   });
 }
 
+export function getVideoSize(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, metadata) => {
+      if (err) return reject(err);
+      const size = metadata.format.size;
+      resolve(size);
+    });
+  });
+}
+
 export function formatDuration(seconds) {
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+}
+
+export function formatSize(bits) {
+  if (typeof bits !== 'number' || isNaN(bits)) return '0 B';
+
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  if (bits === 0) return '0 B';
+
+  const i = Math.floor(Math.log(bits) / Math.log(1024));
+  const value = bits / Math.pow(1024, i);
+
+  return `${value.toFixed(value < 10 ? 2 : 1)} ${sizes[i]}`;
 }
