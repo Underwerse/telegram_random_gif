@@ -2,7 +2,13 @@ import path from 'path';
 import { CONFIG } from '../config.js';
 import { getVideoById } from '../utils/preview.js';
 import { logActivity } from '../utils/logger.js';
-import { escapeMarkdown, formatDuration, formatSize, getVideoDuration, getVideoSize } from '../utils/helpers.js';
+import {
+  escapeMarkdown,
+  formatDuration,
+  formatSize,
+  getVideoDuration,
+  getVideoSize,
+} from '../utils/helpers.js';
 
 export async function handleCallback(bot, query) {
   const chatId = query.message.chat.id;
@@ -41,16 +47,20 @@ export async function handleCallback(bot, query) {
 
         // Отправляем инфо перед самим видео
         const infoMsg =
-          `🎬: \`${videoFile}\`\n` + `${durationStr}` + `${sizeStr}`;
+          `🎬: \`show ${videoFile.split('.')[0]}\`\n` +
+          `${durationStr}` +
+          `${sizeStr}`;
 
-        await bot.sendMessage(chatId, escapeMarkdown(infoMsg), { parse_mode: 'MarkdownV2' });
+        await bot.sendMessage(chatId, escapeMarkdown(infoMsg), {
+          parse_mode: 'MarkdownV2',
+        });
 
         // НЕ вызываем answerCallbackQuery до отправки видео
         await bot.sendVideo(chatId, videoPath);
 
         // Логируем
         logActivity(
-          `${username}/${name} посмотрел \`show ${
+          `👤 ${username}/${name} посмотрел \`show ${
             videoFile.split('.')[0]
           }\` ${new Date().toLocaleString('ru-RU', {
             timeZone: 'Europe/Moscow',

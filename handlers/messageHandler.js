@@ -2,15 +2,23 @@ import fs from 'fs';
 import axios from 'axios';
 import path from 'path';
 import { CONFIG } from '../config.js';
-import { sendVideoPreviews, sentPreviews } from '../utils/preview.js';
+import {
+  sendVideoPreviews,
+  sentPreviews,
+  videoIdMap,
+} from '../utils/preview.js';
 import {
   escapeMarkdown,
+  formatDuration,
+  formatSize,
   generateThumbnail,
+  getVideoDuration,
+  getVideoSize,
   shuffleArray,
 } from '../utils/helpers.js';
 import { logActivity } from '../utils/logger.js';
 
-const authorized = {};
+export const authorized = {};
 const logAuthorized = {};
 const sentGifs = new Set();
 
@@ -52,6 +60,50 @@ export async function handleMessage(bot, msg) {
       { ...msg, text: query, show: true },
       (videoFile) => videoFile.toLowerCase().includes(query)
     );
+  }
+
+  if (text?.startsWith('/start play_')) {
+    authorized[chatId] = true;
+    const videoId = text.split('_')[1]; // извлекаем ID после play_
+    const videoFile = videoIdMap.get(videoId);
+
+    if (!videoFile) {
+      return bot.sendMessage(
+        chatId,
+        '❌ Видео не найдено или ссылка устарела.'
+      );
+    }
+
+    const videoPath = path.join(CONFIG.PATHS.VIDEOS, videoFile);
+
+    let durationStr = '';
+    try {
+      const durationSec = await getVideoDuration(videoPath);
+      durationStr = `\n⏱️: ${formatDuration(durationSec)}`;
+    } catch (e) {
+      console.warn(`Не удалось получить длительность: ${videoFile}`, e.message);
+    }
+
+    let sizeStr = '';
+    try {
+      const sizeBits = await getVideoSize(videoPath);
+      sizeStr = `  📦: ${formatSize(sizeBits)}`;
+    } catch (e) {
+      console.warn(`Не удалось получить размер: ${videoFile}`, e.message);
+    }
+
+    await bot.sendMessage(
+      chatId,
+      `🎬: \`show ${escapeMarkdown(videoFile.split('.')[0])}\`${escapeMarkdown(
+        durationStr
+      )}${escapeMarkdown(sizeStr)}`,
+      {
+        parse_mode: 'MarkdownV2',
+      }
+    );
+
+    await bot.sendVideo(chatId, videoPath);
+    return;
   }
 
   switch (text) {
@@ -243,7 +295,12 @@ async function sendGifs(bot, chatId, username, name) {
       }
     }
 
-    logActivity(`${username}/${name} запросил gif ${new Date().toLocaleString('ru-RU', { timeZone: 'Europe/Moscow' })}`);
+    logActivity(
+      `👤 ${username}/${name} запросил gif ${new Date().toLocaleString(
+        'ru-RU',
+        { timeZone: 'Europe/Moscow' }
+      )}`
+    );
   } catch (error) {
     console.error('Ошибка при отправке гифок:', error);
     await bot.sendMessage(chatId, '❌ Ошибка при отправке гифок.');

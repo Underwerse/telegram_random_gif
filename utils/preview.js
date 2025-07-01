@@ -23,6 +23,8 @@ export async function sendVideoPreviews(
   try {
     const { chat, text, from, show } = msg;
     const chatId = chat.id;
+    const me = await bot.getMe();
+    const botUsername = me.username;
     const username = from.username || 'user';
     const name = from.first_name || 'anon';
     let thumbsToSend = [];
@@ -49,22 +51,32 @@ export async function sendVideoPreviews(
         videoFile.toLowerCase().includes(text.toLowerCase())
       );
 
-      thumbsToSend = matchedVideos
-        .map((videoFile) => {
-          const base = path.basename(videoFile, path.extname(videoFile));
-          const thumb = thumbs.find(
-            (thumb) =>
-              path.basename(thumb, path.extname(thumb)).toLowerCase().trim() ===
-              base.toLowerCase().trim()
-          );
-          // фильтруем здесь
-          if (thumb && !sentPreviews[chatId].has(thumb)) {
-            return thumb;
+      const notSeenThumbs = [];
+      const alreadySeenThumbs = [];
+
+      for (const videoFile of matchedVideos) {
+        const base = path.basename(videoFile, path.extname(videoFile));
+        const thumb = thumbs.find(
+          (thumb) =>
+            path.basename(thumb, path.extname(thumb)).toLowerCase().trim() ===
+            base.toLowerCase().trim()
+        );
+        if (thumb) {
+          if (!sentPreviews[chatId].has(thumb)) {
+            notSeenThumbs.push(thumb);
+          } else {
+            alreadySeenThumbs.push(thumb);
           }
-          return null;
-        })
-        .filter(Boolean)
-        .slice(0, limit);
+        }
+      }
+
+      if (notSeenThumbs.length > 0) {
+        thumbsToSend = notSeenThumbs.slice(0, limit);
+      } else if (alreadySeenThumbs.length > 0) {
+        // Вернём 1 уже просмотренное
+        thumbsToSend = alreadySeenThumbs.slice(0, 1);
+        msg._alreadySeen = true; // 👈 кастомная метка, чтобы дальше в коде отреагировать
+      }
     }
 
     if (!thumbsToSend.length && !show) {
@@ -112,10 +124,18 @@ export async function sendVideoPreviews(
       const videoId = crypto.randomBytes(6).toString('hex');
       videoIdMap.set(videoId, videoFile);
 
+      const playLink = `https://t.me/${botUsername}?start=play_${videoId}`;
+
+      const alreadySeen = msg._alreadySeen === true;
+
       await bot.sendPhoto(chatId, path.join(CONFIG.PATHS.THUMBS, thumb), {
-        caption: `🎬: ${escapeMarkdown(videoFile)}${escapeMarkdown(
-          durationStr
-        )}${escapeMarkdown(sizeStr)}`,
+        caption: `${
+          alreadySeen
+            ? '👀 Кажется, вы уже смотрели это видео ранее'
+            : `🎬: \`show ${escapeMarkdown(videoFile.split('.')[0])}\``
+        }${escapeMarkdown(durationStr)}${escapeMarkdown(
+          sizeStr
+        )}\n[▶ Смотреть в боте](${playLink})`,
         parse_mode: 'MarkdownV2',
         reply_markup: {
           inline_keyboard: [
@@ -127,7 +147,7 @@ export async function sendVideoPreviews(
       sentPreviews[chatId].add(thumb);
 
       logActivity(
-        `${username}/${name} запросил ${text} \`show ${
+        `👤 ${username}/${name} запросил ${text} \`show ${
           thumb.split('.')[0]
         }\` ${new Date().toLocaleString('ru-RU', {
           timeZone: 'Europe/Moscow',

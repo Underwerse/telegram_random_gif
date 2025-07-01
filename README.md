@@ -1,0 +1,2 @@
+# Запуск контейнера командой
+```docker run -d --name give-me-pros-bot --rm --env-file /root/give-me-pros-bot/.env -v /root/give-me-pros-bot/data:/usr/src/app/data underwerse/telegram_bot_gifs-give-me-pros-bot:latest```

@@ -7,7 +7,10 @@ dotenv.config();
 const bot = new TelegramBot(process.env.TELEGRAM_TOKEN, { polling: true });
 
 bot.onText(/\/start/, (msg) => {
-  bot.sendMessage(msg.chat.id, 'Добро пожаловать! Введи пароль.');
+  if ((authorized[chatId] = true)) return;
+  else {
+    bot.sendMessage(msg.chat.id, 'Добро пожаловать! Введи пароль.');
+  }
 });
 
 bot.on('message', (msg) => handleMessage(bot, msg));

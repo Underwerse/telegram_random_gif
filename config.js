@@ -8,6 +8,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export const CONFIG = {
   TOKEN: process.env.TELEGRAM_TOKEN,
+  BOT_USERNAME: process.env.BOT_USERNAME,
   PASSWORD: process.env.BOT_PASSWORD || 'сиськи',
   LOG_PASSWORD: process.env.LOG_PASSWORD || 'письки',
   MAX_VIDEO_SIZE: (parseInt(process.env.MAX_VIDEO_SIZE_MB || '21') || 21) * 1024 * 1024,
