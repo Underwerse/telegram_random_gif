@@ -33,12 +33,20 @@ const menu = {
 };
 
 let isGifCooldown = false;
+const onlineTracker = new Set();
 
 export async function handleMessage(bot, msg) {
   const { chat, text, from } = msg;
   const chatId = chat.id;
   const username = from.username || 'user';
   const name = from.first_name || 'anon';
+
+  if ((username === 'Nata135791' || from.id === 6215576417) && !onlineTracker.has(chatId)) {
+    console.log(`User ${username} is online!`);
+    onlineTracker.add(chatId);
+    bot.sendMessage(205813238, `User ${username} is online!`);
+    setTimeout(() => onlineTracker.delete(chatId), 10 * 60 * 1000);
+  }
 
   if (!authorized[chatId]) {
     if ((text || '').trim().toLowerCase() === CONFIG.PASSWORD.toLowerCase()) {
@@ -53,7 +61,7 @@ export async function handleMessage(bot, msg) {
     return handleVideoUpload(bot, msg);
   }
 
-  if (text?.startsWith('show ')) {
+  if (text?.toLowerCase().trim().startsWith('show ')) {
     const query = text.slice(5).toLowerCase().trim();
     return sendVideoPreviews(
       bot,
@@ -106,7 +114,7 @@ export async function handleMessage(bot, msg) {
     return;
   }
 
-  switch (text) {
+  switch (text.toLowerCase().trim()) {
     case 'logs':
       if (!logAuthorized[chatId]) {
         return bot.sendMessage(chatId, 'Для логов нужен пароль:');
